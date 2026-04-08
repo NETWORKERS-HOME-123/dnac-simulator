@@ -5,7 +5,7 @@ import { generateDevices, generateIssues, getNetworkSnapshot, getClientHealth } 
 import {
   AlertCircle, AlertTriangle, TrendingUp, Globe, Server, Layers,
   Shield, Image, Download, Key, AlertOctagon, FileText, Brain,
-  ChevronRight, Wifi, Monitor
+  ChevronRight, Wifi, Monitor, FlaskConical
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -172,6 +172,14 @@ export default function Dashboard() {
             title="EoX Status"
             value={snapshot.eoxStatus.alerts}
             details={[`${snapshot.eoxStatus.scanned} devices scanned`, `${snapshot.eoxStatus.alerts} alerts`]}
+          />
+          <SnapshotTile
+            icon={FlaskConical}
+            title="Training Labs"
+            value={20}
+            details={['Beginner to Advanced', 'Hands-on interactive labs']}
+            action="Open Labs"
+            onClick={() => navigate('/labs')}
           />
         </div>
       </div>

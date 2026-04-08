@@ -10,6 +10,8 @@ import Dashboard from "@/pages/Dashboard";
 import Topology from "@/pages/Topology";
 import Inventory from "@/pages/Inventory";
 import Assurance from "@/pages/Assurance";
+import Labs from "@/pages/Labs";
+import { LabRunner } from "@/components/labs/LabRunner";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -27,6 +29,8 @@ const App = () => (
             <Route path="/provision/topology" element={<Topology />} />
             <Route path="/provision/inventory" element={<Inventory />} />
             <Route path="/assurance" element={<Assurance />} />
+            <Route path="/labs" element={<Labs />} />
+            <Route path="/labs/:labId" element={<LabRunner />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
