@@ -1,6 +1,5 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { Outlet, useLocation } from "react-router-dom";
-import { CiscoSidebar } from "./CiscoSidebar";
 import { CiscoHeader } from "./CiscoHeader";
 import { toast } from "sonner";
 
@@ -13,7 +12,6 @@ const criticalEvents = [
 ];
 
 export function CiscoLayout() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const location = useLocation();
 
   useEffect(() => {
@@ -26,23 +24,20 @@ export function CiscoLayout() {
 
   const getBreadcrumb = () => {
     const map: Record<string, string[]> = {
-      '/': ['Home', 'Dashboard'],
-      '/topology': ['Network', 'Topology'],
-      '/inventory': ['Provision', 'Device Inventory'],
+      '/': ['Home'],
+      '/provision/topology': ['Provision', 'Topology'],
+      '/provision/inventory': ['Provision', 'Inventory'],
       '/assurance': ['Assurance', 'Health'],
     };
     return map[location.pathname] || ['Home'];
   };
 
   return (
-    <div className="flex h-screen w-full overflow-hidden" style={{ backgroundColor: 'hsl(213, 27%, 14%)' }}>
-      <CiscoSidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
-      <div className="flex flex-1 flex-col min-w-0">
-        <CiscoHeader breadcrumb={getBreadcrumb()} />
-        <main className="flex-1 overflow-auto bg-background p-6">
-          <Outlet />
-        </main>
-      </div>
+    <div className="flex flex-col h-screen w-full overflow-hidden" style={{ backgroundColor: 'hsl(213, 27%, 14%)' }}>
+      <CiscoHeader breadcrumb={getBreadcrumb()} />
+      <main className="flex-1 overflow-auto bg-background">
+        <Outlet />
+      </main>
     </div>
   );
 }

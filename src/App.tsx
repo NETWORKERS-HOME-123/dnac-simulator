@@ -21,8 +21,8 @@ const App = () => (
         <Routes>
           <Route element={<CiscoLayout />}>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/topology" element={<Topology />} />
-            <Route path="/inventory" element={<Inventory />} />
+            <Route path="/provision/topology" element={<Topology />} />
+            <Route path="/provision/inventory" element={<Inventory />} />
             <Route path="/assurance" element={<Assurance />} />
           </Route>
           <Route path="*" element={<NotFound />} />

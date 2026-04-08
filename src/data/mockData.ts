@@ -1,21 +1,28 @@
-// Mock data for Cisco DNA Center simulation
+// Mock data for Cisco Catalyst Center simulation — accurate to official docs
 
 export type DeviceRole = 'CORE' | 'DISTRIBUTION' | 'ACCESS' | 'BORDER ROUTER' | 'WLC' | 'AP';
 export type DeviceType = 'router' | 'switch' | 'ap' | 'wlc';
-export type Reachability = 'Reachable' | 'Unreachable';
+export type Reachability = 'Reachable' | 'Ping Reachable' | 'Unreachable';
+export type ManagementState = 'Managed' | 'Unmanaged';
+export type ComplianceStatus = 'Compliant' | 'Non-Compliant' | 'Not Available';
+export type SyncStatus = 'Success' | 'Failed' | 'In Progress';
 export type HealthStatus = 'healthy' | 'warning' | 'critical';
 
 export interface NetworkDevice {
   id: string;
   hostname: string;
   ip: string;
+  deviceFamily: string;
   platform: string;
   softwareVersion: string;
   role: DeviceRole;
   type: DeviceType;
   uptime: string;
   reachability: Reachability;
-  healthScore: number;
+  managementState: ManagementState;
+  compliance: ComplianceStatus;
+  lastSyncStatus: SyncStatus;
+  healthScore: number; // 0-100
   macAddress: string;
   serialNumber: string;
   site: string;
@@ -45,7 +52,7 @@ export interface TopologyLink {
   id: string;
   source: string;
   target: string;
-  utilization: number; // 0-100
+  utilization: number;
   bandwidth: string;
   status: 'up' | 'down';
 }
@@ -71,9 +78,37 @@ const randomUptime = () => {
 
 const randomHealth = (): number => {
   const r = Math.random();
-  if (r > 0.15) return Math.floor(Math.random() * 3) + 8; // 8-10
-  if (r > 0.05) return Math.floor(Math.random() * 3) + 5; // 5-7
-  return Math.floor(Math.random() * 4) + 1; // 1-4
+  if (r > 0.15) return Math.floor(Math.random() * 20) + 80; // 80-100
+  if (r > 0.05) return Math.floor(Math.random() * 30) + 50; // 50-79
+  return Math.floor(Math.random() * 40) + 10; // 10-49
+};
+
+const randomReachability = (bias = 0.9): Reachability => {
+  const r = Math.random();
+  if (r < bias) return 'Reachable';
+  if (r < bias + 0.05) return 'Ping Reachable';
+  return 'Unreachable';
+};
+
+const randomCompliance = (): ComplianceStatus => {
+  const r = Math.random();
+  if (r > 0.25) return 'Compliant';
+  if (r > 0.1) return 'Non-Compliant';
+  return 'Not Available';
+};
+
+const randomSyncStatus = (): SyncStatus => {
+  const r = Math.random();
+  if (r > 0.15) return 'Success';
+  if (r > 0.05) return 'In Progress';
+  return 'Failed';
+};
+
+const deviceFamilies: Record<DeviceType, string[]> = {
+  router: ['Cisco ASR 1000 Series', 'Cisco ISR 4000 Series', 'Cisco Catalyst 8000V'],
+  switch: ['Cisco Catalyst 9500 Series', 'Cisco Catalyst 9400 Series', 'Cisco Catalyst 9300 Series', 'Cisco Catalyst 9200 Series'],
+  ap: ['Cisco Catalyst 9120 Series', 'Cisco Catalyst 9130 Series', 'Cisco Catalyst 9166 Series'],
+  wlc: ['Cisco Catalyst 9800 Series'],
 };
 
 const generateInterfaces = (type: DeviceType): DeviceInterface[] => {
@@ -98,61 +133,74 @@ const sites = ['Global/San Jose/Building-1', 'Global/San Jose/Building-2', 'Glob
 
 export const generateDevices = (): NetworkDevice[] => {
   const devices: NetworkDevice[] = [
-    // Core routers
     ...['CORE-RTR-01', 'CORE-RTR-02'].map((h, i) => ({
-      id: `rtr-${i}`, hostname: h, ip: `10.1.1.${i + 1}`, platform: 'Cisco ASR 1001-X',
+      id: `rtr-${i}`, hostname: h, ip: `10.1.1.${i + 1}`,
+      deviceFamily: 'Cisco ASR 1000 Series', platform: 'Cisco ASR 1001-X',
       softwareVersion: 'IOS-XE 17.6.3', role: 'BORDER ROUTER' as DeviceRole, type: 'router' as DeviceType,
-      uptime: randomUptime(), reachability: 'Reachable' as Reachability, healthScore: randomHealth(),
+      uptime: randomUptime(), reachability: 'Reachable' as Reachability,
+      managementState: 'Managed' as ManagementState, compliance: randomCompliance(),
+      lastSyncStatus: 'Success' as SyncStatus, healthScore: randomHealth(),
       macAddress: `00:1A:2B:${i}C:3D:4E`, serialNumber: `FCW2${i}34K0${i}P`, site: sites[0],
       lastUpdated: new Date(Date.now() - Math.random() * 3600000).toISOString(),
       interfaces: generateInterfaces('router'),
     })),
-    // Core switches
     ...['SW-CORE-01', 'SW-CORE-02'].map((h, i) => ({
-      id: `sw-core-${i}`, hostname: h, ip: `10.1.2.${i + 1}`, platform: 'Cisco Catalyst 9500',
+      id: `sw-core-${i}`, hostname: h, ip: `10.1.2.${i + 1}`,
+      deviceFamily: 'Cisco Catalyst 9500 Series', platform: 'Cisco Catalyst 9500-48Y4C',
       softwareVersion: 'IOS-XE 17.6.4', role: 'CORE' as DeviceRole, type: 'switch' as DeviceType,
-      uptime: randomUptime(), reachability: 'Reachable' as Reachability, healthScore: randomHealth(),
+      uptime: randomUptime(), reachability: 'Reachable' as Reachability,
+      managementState: 'Managed' as ManagementState, compliance: randomCompliance(),
+      lastSyncStatus: 'Success' as SyncStatus, healthScore: randomHealth(),
       macAddress: `00:2B:3C:${i}D:4E:5F`, serialNumber: `FDO2${i}45L0${i}R`, site: sites[0],
       lastUpdated: new Date(Date.now() - Math.random() * 3600000).toISOString(),
       interfaces: generateInterfaces('switch'),
     })),
-    // Distribution switches
     ...Array.from({ length: 6 }, (_, i) => ({
-      id: `sw-dist-${i}`, hostname: `SW-DIST-0${i + 1}`, ip: `10.1.3.${i + 1}`, platform: 'Cisco Catalyst 9400',
+      id: `sw-dist-${i}`, hostname: `SW-DIST-0${i + 1}`, ip: `10.1.3.${i + 1}`,
+      deviceFamily: 'Cisco Catalyst 9400 Series', platform: 'Cisco Catalyst 9407R',
       softwareVersion: 'IOS-XE 17.5.1', role: 'DISTRIBUTION' as DeviceRole, type: 'switch' as DeviceType,
-      uptime: randomUptime(), reachability: (Math.random() > 0.05 ? 'Reachable' : 'Unreachable') as Reachability,
-      healthScore: randomHealth(), macAddress: `00:3C:4D:${i}E:5F:6A`, serialNumber: `FDO2${i}56M0${i}S`,
+      uptime: randomUptime(), reachability: randomReachability(0.92),
+      managementState: 'Managed' as ManagementState, compliance: randomCompliance(),
+      lastSyncStatus: randomSyncStatus(), healthScore: randomHealth(),
+      macAddress: `00:3C:4D:${i}E:5F:6A`, serialNumber: `FDO2${i}56M0${i}S`,
       site: sites[i % sites.length], lastUpdated: new Date(Date.now() - Math.random() * 3600000).toISOString(),
       interfaces: generateInterfaces('switch'),
     })),
-    // Access switches
     ...Array.from({ length: 24 }, (_, i) => ({
       id: `sw-acc-${i}`, hostname: `SW-ACCESS-${String(i + 1).padStart(2, '0')}`, ip: `10.1.4.${i + 1}`,
-      platform: i % 3 === 0 ? 'Cisco Catalyst 9300' : i % 3 === 1 ? 'Cisco Catalyst 9200' : 'Cisco Catalyst 3850',
+      deviceFamily: i % 3 === 0 ? 'Cisco Catalyst 9300 Series' : i % 3 === 1 ? 'Cisco Catalyst 9200 Series' : 'Cisco Catalyst 9300 Series',
+      platform: i % 3 === 0 ? 'Cisco Catalyst 9300-48U' : i % 3 === 1 ? 'Cisco Catalyst 9200L-48P' : 'Cisco Catalyst 9300-24T',
       softwareVersion: i % 2 === 0 ? 'IOS-XE 17.6.4' : 'IOS-XE 17.3.5',
       role: 'ACCESS' as DeviceRole, type: 'switch' as DeviceType, uptime: randomUptime(),
-      reachability: (Math.random() > 0.08 ? 'Reachable' : 'Unreachable') as Reachability,
+      reachability: randomReachability(0.88),
+      managementState: (Math.random() > 0.1 ? 'Managed' : 'Unmanaged') as ManagementState,
+      compliance: randomCompliance(), lastSyncStatus: randomSyncStatus(),
       healthScore: randomHealth(), macAddress: `00:4D:5E:${String(i).padStart(2, '0')}:6A:7B`,
       serialNumber: `FDO2${i}67N0${i}T`, site: sites[i % sites.length],
       lastUpdated: new Date(Date.now() - Math.random() * 3600000).toISOString(),
       interfaces: generateInterfaces('switch'),
     })),
-    // WLCs
     ...['WLC-01', 'WLC-02'].map((h, i) => ({
-      id: `wlc-${i}`, hostname: h, ip: `10.1.5.${i + 1}`, platform: 'Cisco Catalyst 9800-40',
+      id: `wlc-${i}`, hostname: h, ip: `10.1.5.${i + 1}`,
+      deviceFamily: 'Cisco Catalyst 9800 Series', platform: 'Cisco Catalyst 9800-40',
       softwareVersion: 'IOS-XE 17.6.2', role: 'WLC' as DeviceRole, type: 'wlc' as DeviceType,
-      uptime: randomUptime(), reachability: 'Reachable' as Reachability, healthScore: randomHealth(),
+      uptime: randomUptime(), reachability: 'Reachable' as Reachability,
+      managementState: 'Managed' as ManagementState, compliance: randomCompliance(),
+      lastSyncStatus: 'Success' as SyncStatus, healthScore: randomHealth(),
       macAddress: `00:5E:6F:${i}A:7B:8C`, serialNumber: `FCW2${i}78P0${i}U`, site: sites[0],
       lastUpdated: new Date(Date.now() - Math.random() * 3600000).toISOString(),
       interfaces: generateInterfaces('wlc'),
     })),
-    // APs
     ...Array.from({ length: 18 }, (_, i) => ({
       id: `ap-${i}`, hostname: `AP-${['LOBBY', 'FLOOR1', 'FLOOR2', 'FLOOR3', 'CONF', 'CAFE'][i % 6]}-${String(Math.floor(i / 6) + 1).padStart(2, '0')}`,
-      ip: `10.1.6.${i + 1}`, platform: i % 2 === 0 ? 'Cisco Catalyst 9120AXI' : 'Cisco Catalyst 9130AXE',
+      ip: `10.1.6.${i + 1}`,
+      deviceFamily: i % 2 === 0 ? 'Cisco Catalyst 9120 Series' : 'Cisco Catalyst 9130 Series',
+      platform: i % 2 === 0 ? 'Cisco Catalyst 9120AXI' : 'Cisco Catalyst 9130AXE',
       softwareVersion: '17.6.4', role: 'AP' as DeviceRole, type: 'ap' as DeviceType, uptime: randomUptime(),
-      reachability: (Math.random() > 0.1 ? 'Reachable' : 'Unreachable') as Reachability,
-      healthScore: randomHealth(), macAddress: `00:6F:7A:${String(i).padStart(2, '0')}:8C:9D`,
+      reachability: randomReachability(0.88),
+      managementState: 'Managed' as ManagementState, compliance: randomCompliance(),
+      lastSyncStatus: randomSyncStatus(), healthScore: randomHealth(),
+      macAddress: `00:6F:7A:${String(i).padStart(2, '0')}:8C:9D`,
       serialNumber: `FCW2${i}89Q0${i}V`, site: sites[i % sites.length],
       lastUpdated: new Date(Date.now() - Math.random() * 3600000).toISOString(),
       interfaces: generateInterfaces('ap'),
@@ -259,7 +307,7 @@ export const generateHealthTrend = () => {
       time: time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       network: Math.floor(75 + Math.random() * 20),
       client: Math.floor(70 + Math.random() * 25),
-      ap: Math.floor(80 + Math.random() * 18),
+      application: Math.floor(80 + Math.random() * 18),
     });
   }
   return data;
@@ -285,4 +333,16 @@ export const getClientHealth = () => ({
     { ssid: 'Guest-WiFi', clients: 198, healthy: 172 },
     { ssid: 'IoT-Network', clients: 114, healthy: 105 },
   ],
+});
+
+export const getNetworkSnapshot = () => ({
+  sites: { total: 5, dnsServers: 3, ntpServers: 2 },
+  networkDevices: { total: 54, unclaimed: 2, unprovisioned: 3, unreachable: 4 },
+  networkProfiles: { total: 8 },
+  applicationPolicies: { total: 3, successful: 2, errored: 1 },
+  images: { total: 12, untagged: 3, unverified: 2 },
+  softwareUpdates: { available: 5 },
+  licensedDevices: { switches: 32, routers: 2, wireless: 20 },
+  eoxStatus: { scanned: 54, alerts: 6 },
+  fieldNotices: { total: 3 },
 });

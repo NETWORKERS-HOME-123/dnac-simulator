@@ -1,27 +1,21 @@
 import { useState, useMemo } from "react";
 import { generateDevices, NetworkDevice } from "@/data/mockData";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from "@/components/ui/sheet";
-import { Search, Download, ArrowUpDown, Tag, MapPin, ChevronUp, ChevronDown } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Search, Download, ArrowUpDown, ChevronUp, ChevronDown, MoreVertical, RefreshCw, Trash2, Edit, RotateCcw } from "lucide-react";
 
-type SortKey = keyof Pick<NetworkDevice, 'hostname' | 'ip' | 'platform' | 'role' | 'healthScore' | 'reachability'>;
+type SortKey = 'hostname' | 'ip' | 'deviceFamily' | 'role' | 'site' | 'reachability' | 'managementState' | 'softwareVersion' | 'healthScore' | 'compliance' | 'lastSyncStatus';
 
 export default function Inventory() {
   const devices = useMemo(() => generateDevices(), []);
@@ -31,6 +25,7 @@ export default function Inventory() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [selected, setSelected] = useState<NetworkDevice | null>(null);
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+  const [focus, setFocus] = useState<'inventory' | 'provision'>('inventory');
 
   const filtered = useMemo(() => {
     let list = devices;
@@ -40,7 +35,8 @@ export default function Inventory() {
       list = list.filter(d =>
         d.hostname.toLowerCase().includes(s) ||
         d.ip.includes(s) ||
-        d.platform.toLowerCase().includes(s)
+        d.deviceFamily.toLowerCase().includes(s) ||
+        d.site.toLowerCase().includes(s)
       );
     }
     list = [...list].sort((a, b) => {
@@ -71,20 +67,65 @@ export default function Inventory() {
   ];
 
   const healthColor = (score: number) =>
-    score >= 8 ? 'hsl(142, 71%, 45%)' : score >= 5 ? 'hsl(38, 92%, 50%)' : 'hsl(0, 72%, 51%)';
+    score >= 70 ? 'hsl(142, 71%, 45%)' : score >= 40 ? 'hsl(38, 92%, 50%)' : 'hsl(0, 72%, 51%)';
+
+  const reachabilityStyle = (r: string) => {
+    if (r === 'Reachable') return { bg: 'hsl(142, 71%, 90%)', color: 'hsl(142, 71%, 30%)' };
+    if (r === 'Ping Reachable') return { bg: 'hsl(38, 92%, 90%)', color: 'hsl(38, 92%, 30%)' };
+    return { bg: 'hsl(0, 72%, 90%)', color: 'hsl(0, 72%, 30%)' };
+  };
+
+  const columns: { key: SortKey; label: string; className?: string }[] = [
+    { key: 'hostname', label: 'Device Name' },
+    { key: 'ip', label: 'IP Address' },
+    { key: 'deviceFamily', label: 'Device Family' },
+    { key: 'role', label: 'Device Role' },
+    { key: 'site', label: 'Site' },
+    { key: 'reachability', label: 'Reachability' },
+    { key: 'managementState', label: 'Manageability' },
+    { key: 'softwareVersion', label: 'Software Version' },
+    { key: 'healthScore', label: 'Health' },
+    { key: 'compliance', label: 'Compliance' },
+    { key: 'lastSyncStatus', label: 'Last Sync' },
+  ];
 
   return (
-    <div className="space-y-4">
+    <div className="p-6 space-y-4">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-foreground">Device Inventory</h1>
+        <div className="flex items-center gap-4">
+          <h1 className="text-lg font-semibold text-foreground">Inventory</h1>
+          {/* Focus selector */}
+          <div className="flex items-center gap-1 border rounded-md p-0.5 bg-card">
+            <Button
+              variant={focus === 'inventory' ? 'default' : 'ghost'}
+              size="sm" className="h-6 text-xs px-3"
+              onClick={() => setFocus('inventory')}
+            >Focus: Inventory</Button>
+            <Button
+              variant={focus === 'provision' ? 'default' : 'ghost'}
+              size="sm" className="h-6 text-xs px-3"
+              onClick={() => setFocus('provision')}
+            >Focus: Provision</Button>
+          </div>
+        </div>
         <div className="flex items-center gap-2">
           {checkedIds.size > 0 && (
-            <div className="flex items-center gap-2 mr-2">
-              <span className="text-xs text-muted-foreground">{checkedIds.size} selected</span>
-              <Button variant="outline" size="sm" className="h-7 text-xs gap-1"><Tag className="h-3 w-3" /> Tag</Button>
-              <Button variant="outline" size="sm" className="h-7 text-xs gap-1"><MapPin className="h-3 w-3" /> Assign Site</Button>
-            </div>
+            <span className="text-xs text-muted-foreground mr-2">{checkedIds.size} selected</span>
           )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+                Actions <ChevronDown className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem className="text-xs gap-2"><RefreshCw className="h-3 w-3" /> Resync</DropdownMenuItem>
+              <DropdownMenuItem className="text-xs gap-2"><Edit className="h-3 w-3" /> Edit Device</DropdownMenuItem>
+              <DropdownMenuItem className="text-xs gap-2"><RotateCcw className="h-3 w-3" /> Reset Device</DropdownMenuItem>
+              <DropdownMenuItem className="text-xs gap-2 text-destructive"><Trash2 className="h-3 w-3" /> Delete Device</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
             <Download className="h-3.5 w-3.5" /> Export
           </Button>
@@ -112,7 +153,7 @@ export default function Inventory() {
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Search by hostname, IP, or platform..."
+          placeholder="Search by name, IP, family, or site..."
           className="pl-9 h-9"
           value={search}
           onChange={e => setSearch(e.target.value)}
@@ -121,98 +162,102 @@ export default function Inventory() {
 
       {/* Table */}
       <Card className="border-0 shadow-sm">
-        <CardContent className="p-0">
+        <CardContent className="p-0 overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 <TableHead className="w-10">
                   <input
-                    type="checkbox"
-                    className="rounded"
+                    type="checkbox" className="rounded"
                     checked={checkedIds.size === filtered.length && filtered.length > 0}
-                    onChange={e => {
-                      setCheckedIds(e.target.checked ? new Set(filtered.map(d => d.id)) : new Set());
-                    }}
+                    onChange={e => setCheckedIds(e.target.checked ? new Set(filtered.map(d => d.id)) : new Set())}
                   />
                 </TableHead>
-                {([
-                  ['hostname', 'Hostname'],
-                  ['ip', 'IP Address'],
-                  ['platform', 'Platform'],
-                  ['role', 'Role'],
-                  ['reachability', 'Reachability'],
-                  ['healthScore', 'Health'],
-                ] as [SortKey, string][]).map(([key, label]) => (
+                {columns.map(col => (
                   <TableHead
-                    key={key}
-                    className="cursor-pointer select-none hover:text-foreground"
-                    onClick={() => toggleSort(key)}
+                    key={col.key}
+                    className="cursor-pointer select-none hover:text-foreground text-xs whitespace-nowrap"
+                    onClick={() => toggleSort(col.key)}
                   >
-                    <div className="flex items-center">
-                      {label}
-                      <SortIcon col={key} />
-                    </div>
+                    <div className="flex items-center">{col.label}<SortIcon col={col.key} /></div>
                   </TableHead>
                 ))}
+                <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map(device => (
-                <TableRow
-                  key={device.id}
-                  className="cursor-pointer"
-                  onClick={() => setSelected(device)}
-                >
-                  <TableCell onClick={e => e.stopPropagation()}>
-                    <input
-                      type="checkbox"
-                      className="rounded"
-                      checked={checkedIds.has(device.id)}
-                      onChange={e => {
-                        const next = new Set(checkedIds);
-                        e.target.checked ? next.add(device.id) : next.delete(device.id);
-                        setCheckedIds(next);
-                      }}
-                    />
-                  </TableCell>
-                  <TableCell className="font-medium text-foreground font-mono text-xs">{device.hostname}</TableCell>
-                  <TableCell className="font-mono text-xs">{device.ip}</TableCell>
-                  <TableCell className="text-xs">{device.platform}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="text-[10px] font-medium">
-                      {device.role}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className="text-[10px] border-0"
-                      style={{
-                        backgroundColor: device.reachability === 'Reachable' ? 'hsl(142, 71%, 90%)' : 'hsl(0, 72%, 90%)',
-                        color: device.reachability === 'Reachable' ? 'hsl(142, 71%, 30%)' : 'hsl(0, 72%, 30%)',
-                      }}
-                    >
-                      {device.reachability}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-2 rounded-full bg-muted overflow-hidden">
-                        <div
-                          className="h-full rounded-full"
-                          style={{
-                            width: `${device.healthScore * 10}%`,
-                            backgroundColor: healthColor(device.healthScore),
-                          }}
-                        />
+              {filtered.map(device => {
+                const rs = reachabilityStyle(device.reachability);
+                return (
+                  <TableRow key={device.id} className="cursor-pointer" onClick={() => setSelected(device)}>
+                    <TableCell onClick={e => e.stopPropagation()}>
+                      <input type="checkbox" className="rounded"
+                        checked={checkedIds.has(device.id)}
+                        onChange={e => {
+                          const next = new Set(checkedIds);
+                          e.target.checked ? next.add(device.id) : next.delete(device.id);
+                          setCheckedIds(next);
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell className="font-medium text-foreground font-mono text-xs whitespace-nowrap">{device.hostname}</TableCell>
+                    <TableCell className="font-mono text-xs">{device.ip}</TableCell>
+                    <TableCell className="text-xs whitespace-nowrap">{device.deviceFamily}</TableCell>
+                    <TableCell><Badge variant="outline" className="text-[10px] font-medium">{device.role}</Badge></TableCell>
+                    <TableCell className="text-xs whitespace-nowrap">{device.site}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-[10px] border-0" style={{ backgroundColor: rs.bg, color: rs.color }}>
+                        {device.reachability}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-[10px] border-0"
+                        style={{
+                          backgroundColor: device.managementState === 'Managed' ? 'hsl(199, 96%, 90%)' : 'hsl(210, 20%, 90%)',
+                          color: device.managementState === 'Managed' ? 'hsl(199, 96%, 30%)' : 'hsl(210, 20%, 40%)',
+                        }}
+                      >{device.managementState}</Badge>
+                    </TableCell>
+                    <TableCell className="text-xs whitespace-nowrap">{device.softwareVersion}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-7 h-1.5 rounded-full bg-muted overflow-hidden">
+                          <div className="h-full rounded-full" style={{ width: `${device.healthScore}%`, backgroundColor: healthColor(device.healthScore) }} />
+                        </div>
+                        <span className="text-[11px] font-medium" style={{ color: healthColor(device.healthScore) }}>{device.healthScore}%</span>
                       </div>
-                      <span className="text-xs font-medium" style={{ color: healthColor(device.healthScore) }}>
-                        {device.healthScore}
-                      </span>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-[10px] border-0"
+                        style={{
+                          backgroundColor: device.compliance === 'Compliant' ? 'hsl(142, 71%, 90%)' : device.compliance === 'Non-Compliant' ? 'hsl(0, 72%, 90%)' : 'hsl(210, 20%, 93%)',
+                          color: device.compliance === 'Compliant' ? 'hsl(142, 71%, 30%)' : device.compliance === 'Non-Compliant' ? 'hsl(0, 72%, 30%)' : 'hsl(210, 20%, 50%)',
+                        }}
+                      >{device.compliance}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-[10px] border-0"
+                        style={{
+                          backgroundColor: device.lastSyncStatus === 'Success' ? 'hsl(142, 71%, 90%)' : device.lastSyncStatus === 'Failed' ? 'hsl(0, 72%, 90%)' : 'hsl(38, 92%, 90%)',
+                          color: device.lastSyncStatus === 'Success' ? 'hsl(142, 71%, 30%)' : device.lastSyncStatus === 'Failed' ? 'hsl(0, 72%, 30%)' : 'hsl(38, 92%, 30%)',
+                        }}
+                      >{device.lastSyncStatus}</Badge>
+                    </TableCell>
+                    <TableCell onClick={e => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0"><MoreVertical className="h-3.5 w-3.5" /></Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem className="text-xs gap-2"><RefreshCw className="h-3 w-3" /> Resync</DropdownMenuItem>
+                          <DropdownMenuItem className="text-xs gap-2"><Edit className="h-3 w-3" /> Edit</DropdownMenuItem>
+                          <DropdownMenuItem className="text-xs gap-2 text-destructive"><Trash2 className="h-3 w-3" /> Delete</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
           <div className="px-4 py-3 text-xs text-muted-foreground border-t">
@@ -228,15 +273,21 @@ export default function Inventory() {
             <>
               <SheetHeader>
                 <SheetTitle>{selected.hostname}</SheetTitle>
-                <SheetDescription>{selected.platform} · {selected.softwareVersion}</SheetDescription>
+                <SheetDescription>{selected.deviceFamily} · {selected.platform}</SheetDescription>
               </SheetHeader>
-              <div className="mt-6 space-y-4">
+              <div className="mt-6 space-y-3">
                 {[
                   ['IP Address', selected.ip],
+                  ['Device Family', selected.deviceFamily],
+                  ['Platform', selected.platform],
+                  ['Software Version', selected.softwareVersion],
                   ['Role', selected.role],
                   ['Uptime', selected.uptime],
                   ['Reachability', selected.reachability],
-                  ['Health Score', `${selected.healthScore}/10`],
+                  ['Manageability', selected.managementState],
+                  ['Health Score', `${selected.healthScore}%`],
+                  ['Compliance', selected.compliance],
+                  ['Last Sync', selected.lastSyncStatus],
                   ['Serial Number', selected.serialNumber],
                   ['MAC Address', selected.macAddress],
                   ['Site', selected.site],
@@ -248,11 +299,8 @@ export default function Inventory() {
                   </div>
                 ))}
               </div>
-
               <div className="mt-6">
-                <h4 className="text-sm font-semibold mb-3 text-foreground">
-                  Interfaces ({selected.interfaces.length})
-                </h4>
+                <h4 className="text-sm font-semibold mb-3 text-foreground">Interfaces ({selected.interfaces.length})</h4>
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
@@ -268,16 +316,12 @@ export default function Inventory() {
                         <TableRow key={i}>
                           <TableCell className="font-mono text-xs py-1.5">{intf.name}</TableCell>
                           <TableCell className="py-1.5">
-                            <Badge
-                              variant="outline"
-                              className="text-[10px] border-0"
+                            <Badge variant="outline" className="text-[10px] border-0"
                               style={{
                                 backgroundColor: intf.status === 'up' ? 'hsl(142, 71%, 90%)' : 'hsl(0, 72%, 90%)',
                                 color: intf.status === 'up' ? 'hsl(142, 71%, 30%)' : 'hsl(0, 72%, 30%)',
                               }}
-                            >
-                              {intf.status}
-                            </Badge>
+                            >{intf.status}</Badge>
                           </TableCell>
                           <TableCell className="text-xs py-1.5">{intf.speed}</TableCell>
                           <TableCell className="text-xs py-1.5">{intf.vlan}</TableCell>
