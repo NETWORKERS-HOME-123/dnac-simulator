@@ -67,6 +67,7 @@ const menuTree: MenuItem[] = [
     ],
   },
   { label: 'Explore', comingSoon: true },
+  { label: 'Simulation Labs', path: '/labs' },
 ];
 
 interface HamburgerMenuProps {
