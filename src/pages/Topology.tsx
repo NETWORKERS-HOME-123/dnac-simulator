@@ -15,7 +15,12 @@ const deviceIcons: Record<string, { shape: string; color: string }> = {
   wlc: { shape: 'diamond', color: 'hsl(270, 60%, 55%)' },
 };
 
-const siteHierarchy = [
+interface SiteNode {
+  name: string;
+  children?: SiteNode[];
+}
+
+const siteHierarchy: SiteNode[] = [
   {
     name: 'Global', children: [
       { name: 'San Jose', children: [{ name: 'Building-1' }, { name: 'Building-2' }] },
