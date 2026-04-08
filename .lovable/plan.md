@@ -1,132 +1,86 @@
 
 
-# Cisco Catalyst Center — Accuracy Overhaul Plan
+# Simulation Labs — 20 Interactive Hands-On Labs (Basic to Advanced)
 
-## Research Findings (Sources: Cisco Live BRKOPS-2464 PDF, Cisco User Guide 2.3.7.x, Official Documentation)
+## Concept
+A new `/labs` page accessible from the hamburger menu and dashboard. Each lab is a **guided, interactive simulation** where the student performs real actions inside the existing Cisco Catalyst Center UI (clicking, configuring, troubleshooting) with step-by-step task tracking, validation, hints, and a completion score. No passive reading — every lab requires the student to DO something.
 
-### Critical Inaccuracies Found
+## The 20 Labs (Basic → Advanced)
 
-**1. Navigation Structure is Wrong**
-The real Catalyst Center uses a **hamburger menu** (top-left icon), NOT a persistent left sidebar. The menu opens as an overlay/flyout with these top-level items (from Cisco Live PDF slide "System 360"):
-- Design
-- Policy
-- Provision
-- Assurance
-- Workflows
-- Tools
-- Platform
-- Activities
-- Reports
-- System (with sub-items: System 360, Settings, Data Platform, Users & Roles, Backup & Restore, Software Management, Disaster Recovery)
-- Explore
+### Beginner (1-7)
+1. **Login & Navigate the Dashboard** — Log in with credentials, identify health score, find P1 issue count, navigate to Assurance via the dashboard card
+2. **Explore the Hamburger Menu** — Open the menu, expand Provision, navigate to Inventory, then to Topology, then back to Home
+3. **Read Device Inventory** — Go to Inventory, find a specific device by hostname using search, identify its IP address, software version, and site
+4. **Filter Inventory by Device Type** — Filter to show only Access Points, count them, then filter to show only routers
+5. **Check Device Health Scores** — Sort inventory by health score, identify the lowest-health device, open its detail sheet, find the interface that is down
+6. **Explore the Network Topology** — Open topology, identify the core routers, click a distribution switch, read its detail panel info
+7. **Identify Link Utilization Issues** — On topology, find the link with highest utilization (red), identify the two connected devices, note the bandwidth
 
-Our current sidebar shows only 4 items (Dashboard, Topology, Inventory, Assurance) as a permanent left rail, which is not how the real product works.
+### Intermediate (8-14)
+8. **Triage Critical Issues** — Go to Assurance > Issues & Events, filter P1 issues, read root cause for each, identify which devices are affected
+9. **Analyze Network Health Trends** — On Assurance Health tab, read the 24h trend chart, identify the time period with lowest network health, compare client vs network health
+10. **Device Compliance Audit** — In Inventory, filter for Non-Compliant devices, list all non-compliant hostnames, identify the common software version causing non-compliance
+11. **Troubleshoot an Unreachable Device** — Find all devices with "Unreachable" reachability status, check their site location, cross-reference with topology to find upstream switch
+12. **Wireless Client Health Analysis** — Navigate to Assurance, review client health donut, identify wired vs wireless health percentage, find the SSID with most issues
+13. **Site-Level Health Comparison** — From Dashboard network snapshot, navigate to Assurance, compare health across sites, identify the worst-performing site
+14. **Software Version Audit** — In Inventory, identify all unique software versions running, find devices running the oldest version, count how many need upgrade
 
-**2. Home Page Structure is Wrong**
-The real home page has two sections per official docs:
-- **Assurance Summary**: Health score (overall enterprise including network devices, wired clients, wireless clients), Critical Issues (P1/P2 counts with "View Details"), Trends and Insights
-- **Network Snapshot**: Sites count, Network Devices count (with unclaimed/unprovisioned/unreachable), Network Profiles, Application Policies, Import Images/SMUs, Software Image Updates, Licensed Devices, EoX Status, Field Notices, AI Endpoint Analytics
+### Advanced (15-20)
+15. **Root Cause Analysis Workflow** — Given a P1 issue, trace through: read root cause → find affected devices in inventory → locate on topology → check link status → recommend fix
+16. **Network Capacity Planning** — Analyze topology link utilizations, identify bottleneck links (>80%), check connected device health, propose which links need bandwidth upgrade
+17. **Full Incident Response** — Simulated scenario: AP goes down → find it in issues → locate in topology → check upstream switch health → check WLC status → document findings
+18. **Multi-Site Health Assessment** — Compare all sites: device counts, health scores, compliance status, reachability — produce a site ranking by overall health
+19. **Change Impact Analysis** — Given a planned maintenance on SW-CORE-01: identify all downstream devices on topology, check their health, list affected access switches and APs, assess blast radius
+20. **End-to-End Network Audit** — Complete audit: check all P1/P2 issues, verify device compliance across sites, identify unreachable devices, check topology for down links, summarize findings
 
-Our current dashboard is a generic health dashboard, not matching this structure.
+## Technical Implementation
 
-**3. Inventory is Under Provision, Not a Top-Level Item**
-In the real product, device inventory is accessed via **Provision > Inventory**, not as a separate top-level page. The inventory table columns include: Device Name, IP Address, Device Family, Device Role, Site, Reachability, Manageability (Managed/Unmanaged), Software Version, Health, Compliance, Last Sync Status.
+### New Files
+| File | Purpose |
+|------|---------|
+| `src/pages/Labs.tsx` | Main labs listing page with 20 lab cards, difficulty badges, completion tracking |
+| `src/components/labs/LabRunner.tsx` | Lab execution engine — shows current step, validates actions, tracks progress |
+| `src/components/labs/LabStep.tsx` | Individual step component with instruction, hint toggle, validation status |
+| `src/data/labDefinitions.ts` | All 20 lab definitions: steps, validation criteria, hints, expected answers |
 
-**4. Topology is Under Provision, Not Top-Level**
-Network Topology is accessed via **Provision > Topology** or the main topology view.
+### Lab Runner Mechanics
+- Each lab has 3-8 steps with clear instructions (e.g., "Navigate to Provision > Inventory")
+- Steps use **action types**: `navigate` (go to a page), `find` (locate specific data and enter answer), `click` (interact with UI element), `answer` (multiple choice or free text answer about what they observed)
+- **Validation**: text input checked against expected answers (case-insensitive, fuzzy match), navigation steps validated by checking current context
+- **Hints**: each step has a toggleable hint (costs points)
+- **Completion**: percentage score based on steps completed and hints used
+- **Progress persistence**: saved in localStorage per lab
 
-**5. Header Bar Details**
-The real header has (right side): Search icon, Favorites (star), Help (?), Software Updates, Notifications (bell), and User avatar. The Cisco logo + "Catalyst Center" branding is on the left side of the header bar.
-
-**6. Assurance Sub-Navigation**
-Assurance has its own sub-tabs: **Health** (with Network/Client/Application sub-views), **Issues & Events**, **AI-Driven**, **Manage** (Sensors, etc.)
-
----
-
-## Implementation Plan
-
-### Step 1: Fix Navigation to Hamburger Menu
-- Remove the persistent left sidebar (`CiscoSidebar.tsx`)
-- Redesign header to include:
-  - Left: Hamburger menu icon (three lines), then Cisco Catalyst Center logo/text
-  - Right: Search, Favorites (star), Help (?), Notifications bell with badge, User avatar
-- Create a `HamburgerMenu` overlay component with the full menu tree:
-  - Design > Network Hierarchy, Network Settings, Network Profiles, Image Repository, Feature Templates
-  - Policy > Group-Based Access Control, IP/URL Access Control, Application Policies, Traffic Copy
-  - Provision > Inventory, Topology (these replace current top-level pages)
-  - Assurance > Health (Network/Client/Application), Issues & Events
-  - Workflows, Tools, Platform, Activities, Reports
-  - System > System 360, Settings, Users & Roles, Backup & Restore, Software Management
-  - Most items show "Coming Soon" placeholders; Inventory, Topology, Assurance, and Home are functional
-
-### Step 2: Rebuild Home Page to Match Real Structure
-- **Top section**: "Assurance Summary" card row:
-  - Health: overall enterprise health score with percentage, "View Details" link to Assurance
-  - Critical Issues: P1 count and P2 count, "View Details" link
-  - Trends and Insights: brief insight text, "View Details" link
-- **Bottom section**: "Network Snapshot" — a grid of summary tiles:
-  - Sites: count + DNS/NTP server counts, "Add Sites" link
-  - Network Devices: total count + unclaimed/unprovisioned/unreachable, "Find New Devices" link
-  - Network Profiles: count, "Manage Profiles" link
-  - Application Policies: count + successful/errored deployments
-  - Import Images/SMUs: image count + untagged/unverified
-  - Licensed Devices: count by type (switches, routers, wireless)
-  - EoX Status: devices scanned + alerts
-  - All using realistic mock data
-
-### Step 3: Fix Inventory Table Columns and Location
-- Route changes to `/provision/inventory`
-- Update columns to match real product: Device Name, IP Address, Device Family (not Platform), Device Role, Site, Reachability (with Reachable/Ping Reachable/Unreachable states per docs), Manageability (Managed/Unmanaged), Software Version, Health, Compliance, Last Sync Status
-- Add "Focus" selector at top (Inventory / Provision view toggle, matching real UI)
-- Add Actions dropdown menu (Resync, Delete, Edit Device, etc.)
-
-### Step 4: Fix Topology Location
-- Route changes to `/provision/topology`
-- Add site hierarchy selector (left panel tree: Global > Areas > Buildings)
-
-### Step 5: Fix Assurance Page Structure
-- Add sub-tabs matching real product: **Health** (default), **Issues & Events**, **Manage**
-- Health tab has its own sub-views: Overall, Network, Client, Application
-- Network Health view: device health timeline chart, top/bottom N healthy devices, device category breakdown
-- Client Health view: wired vs wireless health, SSID breakdown, onboarding stats
-- Issues & Events tab: filterable issue list with severity, timestamp, category, status (Open/Resolved)
-
-### Step 6: Update Mock Data for Accuracy
-- Add `managementState: 'Managed' | 'Unmanaged'` to device type
-- Add `compliance: 'Compliant' | 'Non-Compliant'` field
-- Add `lastSyncStatus: 'Success' | 'Failed' | 'In Progress'`
-- Add `deviceFamily` field (Cisco Catalyst 9000 Series, Cisco ASR 1000 Series, etc.)
-- Update reachability to include `'Ping Reachable'` as a third state
-- Add site/network snapshot mock data (site count, profile count, etc.)
-
-### Step 7: Visual Polish for Accuracy
-- Header: dark background (#1b2a32 or similar), Cisco bridge logo SVG on the left
-- Hamburger menu: dark overlay panel matching Cisco's slide-out menu style
-- Content area: light gray background (#f5f5f5)
-- Typography: use system fonts that match Cisco's CiscoSans look (Inter or similar)
-- Health scores displayed as percentage (0-100%) not 1-10 scale (the real product uses percentage)
-
----
-
-## Technical Details
-
-### File Changes Summary
-| File | Action |
+### Modified Files
+| File | Change |
 |------|--------|
-| `CiscoSidebar.tsx` | Remove or repurpose as hamburger menu overlay |
-| `CiscoHeader.tsx` | Rebuild with hamburger icon, Cisco logo, correct right-side icons |
-| `CiscoLayout.tsx` | Remove sidebar layout, use full-width with header only |
-| `HamburgerMenu.tsx` | New component — slide-out menu with full navigation tree |
-| `Dashboard.tsx` | Rebuild as Assurance Summary + Network Snapshot |
-| `Inventory.tsx` | Update columns, route to `/provision/inventory` |
-| `Topology.tsx` | Route to `/provision/topology`, add site hierarchy |
-| `Assurance.tsx` | Add sub-tabs (Health/Issues & Events/Manage), sub-views |
-| `mockData.ts` | Add missing fields (managementState, compliance, deviceFamily, etc.), health as 0-100% |
-| `App.tsx` | Update routes for new structure |
+| `src/App.tsx` | Add `/labs` and `/labs/:labId` routes |
+| `src/components/layout/HamburgerMenu.tsx` | Add "Simulation Labs" menu item under a new top-level entry |
+| `src/pages/Dashboard.tsx` | Add a "Training Labs" quick-access card in the Network Snapshot section |
 
-### Estimated Scope
-- 10 files modified/created
-- Navigation completely restructured
-- Home page rebuilt
-- All data fields corrected for training accuracy
+### Lab Page UI
+- Grid of 20 lab cards, each showing: lab number, title, difficulty badge (Beginner/Intermediate/Advanced with green/yellow/red), estimated time (5-20 min), completion status (checkmark or progress bar)
+- Click a lab → opens LabRunner with step-by-step panel on the right side (or bottom on mobile)
+- Lab runner shows: current step instruction, text input or multiple-choice for answers, "Check Answer" button, hint toggle, next/previous step, progress bar
+- The student interacts with the real simulation pages — the lab runner acts as an overlay/sidebar guide
+
+### Lab Definition Structure
+```text
+Lab {
+  id, title, difficulty, estimatedMinutes, description,
+  steps: [
+    {
+      instruction: string,        // "Navigate to Provision > Inventory"
+      type: 'navigate' | 'find' | 'answer' | 'action',
+      hint: string,               // "Use the hamburger menu..."
+      validation: {
+        type: 'exact' | 'contains' | 'choice' | 'navigation',
+        answer?: string,          // expected answer
+        choices?: string[],       // for multiple choice
+        route?: string,           // for navigation validation
+      }
+    }
+  ]
+}
+```
 
