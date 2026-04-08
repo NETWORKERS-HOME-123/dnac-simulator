@@ -90,7 +90,7 @@ export default function Topology() {
     });
   };
 
-  const renderSiteTree = (items: typeof siteHierarchy, depth = 0) => (
+  const renderSiteTree = (items: SiteNode[], depth = 0): React.ReactNode => (
     <div className={depth > 0 ? "ml-3 border-l pl-2" : ""} style={depth > 0 ? { borderColor: 'hsl(214, 20%, 88%)' } : {}}>
       {items.map(item => (
         <div key={item.name}>
