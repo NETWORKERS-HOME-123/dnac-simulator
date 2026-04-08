@@ -4,6 +4,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CiscoLayout } from "@/components/layout/CiscoLayout";
+import { AuthGuard } from "@/components/layout/AuthGuard";
+import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import Topology from "@/pages/Topology";
 import Inventory from "@/pages/Inventory";
@@ -19,7 +21,8 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route element={<CiscoLayout />}>
+          <Route path="/login" element={<Login />} />
+          <Route element={<AuthGuard><CiscoLayout /></AuthGuard>}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/provision/topology" element={<Topology />} />
             <Route path="/provision/inventory" element={<Inventory />} />
